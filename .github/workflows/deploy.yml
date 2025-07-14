@@ -52,7 +52,7 @@ jobs:
           echo "▶️ Streaming SQL into Snowflake via sf CLI…"
           # Extract all custom_TSQL statements and pipe into sf
           yq -r '.[] .custom_TSQL' *.yaml \
-            | sf query execute \
+            | snowflake \
                 --account-name $SNOWFLAKE_ACCOUNT \
                 --username     $SNOWFLAKE_USER \
                 --password     $SNOWFLAKE_PWD \
