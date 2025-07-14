@@ -9,63 +9,58 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-
-      # 1. Checkout your repo
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Set up Python (to run your sql_to_yaml.py converter)
+      - name: Set up Node.js (for sf CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install sf CLI
+        run: npm install -g @snowflake-labs/sf
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'      # Use a supported 3.x version
+          python-version: '3.10'
           check-latest: false
 
-      # 3. Install dependencies (PyYAML, yq)
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pyyaml
-          # Install yq for YAML querying
-          sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          # Install Mike Farah's yq (pure-Go) which supports -r
+          sudo wget -O /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      # 4. Convert all .sql → .yaml
       - name: Generate YAML from SQL
-        run: |
-          python scripts/sql_to_yaml.py
+        run: python scripts/sql_to_yaml.py
 
-      # 5. Install SnowSQL CLI
-      - name: Install SnowSQL
-        run: |
-          curl -O https://sfc-repo.snowflakecomputing.com/snowsql/bootstrap/1.2/linux_x86_64/snowsql
-          chmod +x snowsql
-          sudo mv snowsql /usr/local/bin/
-
-      # 6. Deploy to Snowflake by streaming YAML → SQL → SnowSQL
-      - name: Deploy to Snowflake
+      - name: Deploy to Snowflake with sf CLI
         env:
-          SNOWSQL_ACCOUNT:   ${{ secrets.SNOWFLAKE_ACCOUNT }}
-          SNOWSQL_USER:      ${{ secrets.SNOWFLAKE_USER }}
-          SNOWSQL_PWD:       ${{ secrets.SNOWFLAKE_PWD }}
-          SNOWSQL_ROLE:      ${{ secrets.SNOWFLAKE_ROLE }}       # optional
-          SNOWSQL_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
-          SNOWSQL_DATABASE:  ${{ secrets.SNOWFLAKE_DATABASE }}
-          SNOWSQL_SCHEMA:    ${{ secrets.SNOWFLAKE_SCHEMA }}
+          SNOWFLAKE_ACCOUNT:   ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER:      ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PWD:       ${{ secrets.SNOWFLAKE_PWD }}
+          SNOWFLAKE_ROLE:      ${{ secrets.SNOWFLAKE_ROLE }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE:  ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA:    ${{ secrets.SNOWFLAKE_SCHEMA }}
         run: |
-          echo "▶️ Extracting SQL from YAML and deploying..."
-          yq e '.[] .custom_TSQL' -o=plain *.yaml \
-            | snowsql \
-                -a $SNOWSQL_ACCOUNT \
-                -u $SNOWSQL_USER \
-                -p $SNOWSQL_PWD \
-                -r $SNOWSQL_ROLE \
-                -w $SNOWSQL_WAREHOUSE \
-                -d $SNOWSQL_DATABASE \
-                -s $SNOWSQL_SCHEMA \
-                --echo-all
+          echo "▶️ Streaming SQL into Snowflake via sf CLI…"
+          # Extract all custom_TSQL statements and pipe into sf
+          yq -r '.[] .custom_TSQL' *.yaml \
+            | sf query execute \
+                --account-name $SNOWFLAKE_ACCOUNT \
+                --username     $SNOWFLAKE_USER \
+                --password     $SNOWFLAKE_PWD \
+                --role         $SNOWFLAKE_ROLE \
+                --warehouse    $SNOWFLAKE_WAREHOUSE \
+                --database     $SNOWFLAKE_DATABASE \
+                --schema       $SNOWFLAKE_SCHEMA \
+                --sql-body     -
 
-      # 7. Optional: Notify on success
       - name: Success notification
         if: success()
         run: echo "🎉 Deployed to Snowflake successfully!"
