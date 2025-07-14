@@ -17,8 +17,10 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install sf CLI
-        run: npm install -g @snowflake-labs/sf
+      - name: Set up Python and SnowCLI
+        run: |
+          pip install --user snowflake-cli
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Set up Python
         uses: actions/setup-python@v4
