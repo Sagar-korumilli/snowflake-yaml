@@ -1,0 +1,8 @@
+- Schema: finance
+  ObjectName: transactions
+  ObjectType: Table
+  Action: New
+  Version: '1'
+  custom_TSQL: "CREATE OR REPLACE TABLE finance.transactions (\n    transaction_id\
+    \ INT,\n    account_id INT,\n    amount NUMBER(12,2),\n    transaction_date DATE\n\
+    );"

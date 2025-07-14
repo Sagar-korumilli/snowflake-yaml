@@ -1,0 +1,8 @@
+- DB: test1
+  Schema: Schema1
+  ObjectName: transactions
+  ObjectType: Table
+  Version: '1.1'
+  Action: Create Table
+  Customer: Custom
+  Source File Name: ./transactions.sql
