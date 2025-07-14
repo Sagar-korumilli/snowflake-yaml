@@ -48,12 +48,11 @@ jobs:
           SNOWFLAKE_ROLE:      ${{ secrets.SNOWFLAKE_ROLE }}
           SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
           SNOWFLAKE_DATABASE:  ${{ secrets.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_SCHEMA:    ${{ secrets.SNOWFLAKE_SCHEMA }}
         run: |
           echo "▶️ Streaming SQL into Snowflake via sf CLI…"
           # Extract all custom_TSQL statements and pipe into sf
           yq -r '.[] .custom_TSQL' *.yaml \
-            | sf query execute \
+            | snowflake \
                 --account-name $SNOWFLAKE_ACCOUNT \
                 --username     $SNOWFLAKE_USER \
                 --password     $SNOWFLAKE_PWD \
